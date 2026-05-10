@@ -17,10 +17,18 @@
 #include <stdio.h>
 #include <string.h>
 
+#define HISTORY_SIZE 100
+char *history[HISTORY_SIZE];
+int history_count = 0;
+
 /*
   Function Declarations for builtin shell commands:
  */
 int lsh_cd(char **args);
+int lsh_pwd(char **args);
+int lsh_echo(char **args);
+int lsh_history(char **args);
+int lsh_env(char **args);
 int lsh_help(char **args);
 int lsh_exit(char **args);
 
@@ -28,13 +36,21 @@ int lsh_exit(char **args);
   List of builtin commands, followed by their corresponding functions.
  */
 char *builtin_str[] = {
-  "cd",
-  "help",
-  "exit"
+    "cd",
+    "pwd",
+    "echo",
+    "history",
+    "env",
+    "help",
+    "exit"
 };
 
 int (*builtin_func[]) (char **) = {
   &lsh_cd,
+  &lsh_pwd,
+  &lsh_echo,
+  &lsh_history,
+  &lsh_env,
   &lsh_help,
   &lsh_exit
 };
@@ -64,6 +80,83 @@ int lsh_cd(char **args)
   return 1;
 }
 
+/*
+    @brief Builtin command: print working directory.
+*/
+int lsh_pwd(char **args)
+{
+    char cwd[1024];
+
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
+    {
+        printf("%s\n", cwd);
+    }
+    else
+    {
+        perror("lsh");
+    }
+
+    return 1;
+}
+/**
+   @brief Builtin command: echo.
+ */
+int lsh_echo(char **args)
+{
+  int i = 1;
+  while (args[i] != NULL) {
+    printf("%s ", args[i]);
+    i++;
+  }
+  printf("\n");
+  return 1;
+}
+/**
+   @brief  Store command in history.
+ */
+void add_to_history(char *line)
+{
+    if (history_count < HISTORY_SIZE)
+    {
+        history[history_count] = strdup(line);
+        history_count++;
+    }
+}
+/**
+    @brief Builtin command: print history.
+ */
+
+int lsh_history(char **args)
+{
+    int i;
+
+    for (i = 0; i < history_count; i++)
+    {
+        printf("%d %s\n", i + 1, history[i]);
+    }
+
+    return 1;
+}
+
+/**
+   @brief Builtin command: print environment variables.
+ */
+extern char **environ; //array of string (environment variables)
+
+int lsh_env(char **args)
+{
+    int i = 0;
+
+    while (environ[i] != NULL)
+    {
+        printf("%s\n", environ[i]);
+        i++;
+    }
+
+    return 1;
+}
+
+
 /**
    @brief Builtin command: print help.
    @param args List of args.  Not examined.
@@ -89,6 +182,7 @@ int lsh_help(char **args)
    @param args List of args.  Not examined.
    @return Always returns 0, to terminate execution.
  */
+
 int lsh_exit(char **args)
 {
   return 0;
@@ -252,13 +346,22 @@ void lsh_loop(void)
   char *line;
   char **args;
   int status;
-
+/**
+  @brief Welcome message .  
+ */
+int count=0;
   do {
+    if(count==0){
+    printf(">Welcome,Dr.Abdelrahman \n");
+    }
+    
     printf("> ");
+    
+    count++;
     line = lsh_read_line();
+    add_to_history(line); // Add command to history
     args = lsh_split_line(line);
     status = lsh_execute(args);
-
     free(line);
     free(args);
   } while (status);
